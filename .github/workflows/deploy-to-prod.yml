@@ -1,0 +1,40 @@
+# 📋 Nom du workflow
+name: Déploiement Automatique en Production
+
+# 🚀 Déclenchement du workflow sur chaque push sur "main"
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Permet un déclenchement manuel
+
+# 🛠️ Définition des jobs
+jobs:
+  deploy:
+    runs-on: ubuntu-latest # Utilise un serveur Linux GitHub Actions
+    steps:
+      - name: 📥 Cloner le dépôt GitHub
+        uses: actions/checkout@v4 # Télécharge le code source du projet
+
+      - name: ⚙️ Installer les dépendances
+        run: |
+          npm install # Exemple pour un projet Node.js
+          npm run build # Génère les fichiers de production
+
+      - name: 🔑 Configurer la clé SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: 📤 Copier les fichiers sur le serveur de production
+        run: |
+          scp -o StrictHostKeyChecking=no -r ./dist/* ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }}:/var/www/app/
+
+      - name: 🔄 Redémarrer l'application sur le serveur
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }} << 'EOF'
+          cd /var/www/app/
+          pm2 restart app # Commande pour redémarrer une application Node.js
+          echo "✅ Application redémarrée avec succès !"
+          EOF
