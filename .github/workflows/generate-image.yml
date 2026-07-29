@@ -33,14 +33,18 @@ jobs:
 
       - name: 🎨 Générer l'image via l'API DynaPictures
         env:
-          DYNAPICTURES_API_KEY: ${{ secrets.DYNAPICTURES_API_KEY }}
           COMMIT_MESSAGE: ${{ steps.commit_message.outputs.message }}
         run: |
-          PAYLOAD=$(jq -n --arg text "$COMMIT_MESSAGE" '{"template": "default", "text": $text}')
+          PAYLOAD=$(jq -n --arg text "$COMMIT_MESSAGE" '{
+            "format": "jpeg",
+            "params": [
+              { "name": "heading", "text": $text }
+            ]
+          }')
 
-          RESPONSE=$(curl -s -X POST "https://api.dynapictures.com/design/generate" \
-            -H "Authorization: Bearer $DYNAPICTURES_API_KEY" \
+          RESPONSE=$(curl -s -X POST "https://api.dynapictures.com/designs/c48dbce23a" \
             -H "Content-Type: application/json" \
+            -H "x-api-key: ${{ secrets.DYNAPICTURES_API_KEY }}" \
             -d "$PAYLOAD")
 
           echo "Réponse API : $RESPONSE"
