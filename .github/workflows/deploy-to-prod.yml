@@ -12,16 +12,11 @@ jobs:
       - name: Cloner le dépôt
         uses: actions/checkout@v4
 
-      - name: Installer et construire
-        run: |
-          npm ci
-          npm run build
-
       - name: Envoyer les fichiers en FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
+          local-dir: ./
           server-dir: /htdocs/
