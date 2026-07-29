@@ -22,7 +22,7 @@ jobs:
         # Cette commande crée un fichier "output.txt" et y écrit du texte
 
       - name: 📤 Sauvegarder le fichier en tant qu'artefact
-        uses: actions/upload-artifact@v3 # Stocke un fichier dans GitHub Actions
+        uses: actions/upload-artifact@v4 # Stocke un fichier dans GitHub Actions
         with:
           name: fichier-genere # Nom de l'artefact (visible dans GitHub Actions)
           path: output.txt # Fichier à stocker
@@ -33,7 +33,7 @@ jobs:
     needs: generate-file # 🔗 Ce job ne démarre que si "generate-file" a réussi
     steps:
       - name: 📥 Télécharger l'artefact stocké
-        uses: actions/download-artifact@v3 # Récupère un artefact depuis GitHub Actions
+        uses: actions/download-artifact@v4 # Récupère un artefact depuis GitHub Actions
         with:
           name: fichier-genere # Télécharge l'artefact nommé "fichier-genere"
           path: ./artifacts/ # Stocke le fichier téléchargé dans le dossier "artifacts"

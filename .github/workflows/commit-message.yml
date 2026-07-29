@@ -17,4 +17,4 @@ jobs:
       - name: Récupérer et afficher le message du dernier commit
         run: |
           echo "Message du dernier commit :"
-          git log -1 --pretty=%B
+          git log -1 --pretty=%Bje 
