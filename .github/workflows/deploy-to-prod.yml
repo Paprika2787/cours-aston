@@ -1,47 +1,27 @@
-# 📋 Nom du workflow
-name: Déploiement Automatique en Production
+name: Déploiement FTP vers InfinityFree
 
-# 🚀 Déclenchement du workflow sur chaque push sur "main"
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch: # Permet un déclenchement manuel
+    branches: [main]
+  workflow_dispatch:
 
-# 🛠️ Définition des jobs
 jobs:
   deploy:
-    runs-on: ubuntu-latest # Utilise un serveur Linux GitHub Actions
-
+    runs-on: ubuntu-latest
     steps:
-      - name: 📥 Cloner le dépôt GitHub
-        uses: actions/checkout@v4 # Télécharge le code source du projet
+      - name: Cloner le dépôt
+        uses: actions/checkout@v4
 
-      - name: ⚙️ Installer les dépendances
+      - name: Installer et construire
         run: |
-          npm install
+          npm ci
           npm run build
 
-      - name: 🔑 Configurer la clé SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.PROD_SERVER_IP }} >> ~/.ssh/known_hosts
-
-      - name: 📤 Copier les fichiers sur le serveur
-        run: |
-          scp -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=yes \
-            -r ./dist/* \
-            ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }}:/var/www/app/
-
-      - name: 🔄 Redémarrer l'application
-        run: |
-          ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=yes \
-            ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }} <<'EOF'
-          cd /var/www/app/
-          pm2 restart app
-          echo "✅ Application redémarrée avec succès !"
-          EOF
+      - name: Envoyer les fichiers en FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: /htdocs/
