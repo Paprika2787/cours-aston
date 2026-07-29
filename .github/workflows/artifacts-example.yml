@@ -1,0 +1,42 @@
+# 📋 Nom du workflow (visible dans l'onglet "Actions" de GitHub)
+name: Gestion des Artefacts
+
+# 🚀 Déclenchement automatique à chaque push sur "main" ou exécution manuelle
+on:
+  push:
+    branches:
+      - main # Ce workflow s'exécute uniquement sur la branche "main"
+  workflow_dispatch: # Permet de l'exécuter manuellement depuis GitHub Actions
+
+# 🛠️ Définition des tâches (jobs)
+jobs:
+  # 1️⃣ Génération d'un fichier et stockage en tant qu'artefact
+  generate-file:
+    runs-on: ubuntu-latest # Exécute le job sur un serveur Linux GitHub
+    steps:
+      - name: 📥 Cloner le dépôt GitHub
+        uses: actions/checkout@v4 # Récupère le code source du dépôt GitHub
+
+      - name: 📝 Générer un fichier texte
+        run: echo "📦 Ceci est un artefact généré automatiquement !" > output.txt
+        # Cette commande crée un fichier "output.txt" et y écrit du texte
+
+      - name: 📤 Sauvegarder le fichier en tant qu'artefact
+        uses: actions/upload-artifact@v3 # Stocke un fichier dans GitHub Actions
+        with:
+          name: fichier-genere # Nom de l'artefact (visible dans GitHub Actions)
+          path: output.txt # Fichier à stocker
+
+  # 2️⃣ Télécharger et utiliser l'artefact
+  use-artifact:
+    runs-on: ubuntu-latest # Ce job s'exécute sur une machine Linux GitHub
+    needs: generate-file # 🔗 Ce job ne démarre que si "generate-file" a réussi
+    steps:
+      - name: 📥 Télécharger l'artefact stocké
+        uses: actions/download-artifact@v3 # Récupère un artefact depuis GitHub Actions
+        with:
+          name: fichier-genere # Télécharge l'artefact nommé "fichier-genere"
+          path: ./artifacts/ # Stocke le fichier téléchargé dans le dossier "artifacts"
+
+      - name: 📖 Lire le contenu de l'artefact
+        run: cat ./artifacts/output.txt # Affiche le contenu du fichier téléchargé
