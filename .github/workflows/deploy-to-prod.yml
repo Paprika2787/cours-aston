@@ -12,29 +12,36 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest # Utilise un serveur Linux GitHub Actions
+
     steps:
       - name: 📥 Cloner le dépôt GitHub
         uses: actions/checkout@v4 # Télécharge le code source du projet
 
       - name: ⚙️ Installer les dépendances
         run: |
-          npm install # Exemple pour un projet Node.js
-          npm run build # Génère les fichiers de production
+          npm install
+          npm run build
 
       - name: 🔑 Configurer la clé SSH
         run: |
-          mkdir -p ~/.ssh/
-          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: 📤 Copier les fichiers sur le serveur de production
+      - name: 📤 Copier les fichiers sur le serveur
         run: |
-          scp -o StrictHostKeyChecking=no -r ./dist/* ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }}:/var/www/app/
+          scp -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            -r ./dist/* \
+            ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }}:/var/www/app/
 
-      - name: 🔄 Redémarrer l'application sur le serveur
+      - name: 🔄 Redémarrer l'application
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }} << 'EOF'
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_IP }} <<'EOF'
           cd /var/www/app/
-          pm2 restart app # Commande pour redémarrer une application Node.js
+          pm2 restart app
           echo "✅ Application redémarrée avec succès !"
           EOF
