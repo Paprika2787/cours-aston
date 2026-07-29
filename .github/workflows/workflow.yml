@@ -1,0 +1,16 @@
+# 🏷️ Nom du workflow (s'affiche dans GitHub Actions)
+name: Mon premier workflow
+
+# 🎯 Quand doit-il s'exécuter ?
+on: 
+  push:    # À chaque "git push" (modification du code)
+    branches:
+      - main    # Seulement sur la branche "main"
+
+# 🏗️ Définition des tâches (jobs)
+jobs:
+  afficher-message:  # Nom du job
+    runs-on: ubuntu-latest  # Utilise une machine Linux sur GitHub
+    steps:
+      - name: Afficher un message
+        run: echo " Félicitations ! Votre premier workflow GitHub Actions fonctionne !
