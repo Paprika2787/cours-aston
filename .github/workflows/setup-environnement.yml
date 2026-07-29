@@ -1,0 +1,29 @@
+ �� Nom du workflow (visible dans GitHub Actions)
+name: Installer les outils
+# �� Déclenchement du workflow à chaque push sur "main" ou manuellement
+on:
+   push:
+      branches:
+          - main
+   workflow_dispatch:
+# �� Définition des tâches (Jobs)
+jobs:
+    installer-dependances:
+         runs-on: ubuntu-latest # Utilise une machine Linux sur GitHub
+ steps:
+ - name: �� Cloner le dépôt GitHub
+ uses: actions/checkout@v4 # Télécharge le code source du projet
+ - name: ⚙️ Installer Node.js
+ uses: actions/setup-node@v3
+ with:
+ node-version: "18" # Version de Node.js à utiliser
+ - name: �� Installer Python
+ uses: actions/setup-python@v4
+ with:
+  python-version: "3.10" # Version de Python à utiliser
+  - name: ✅ Vérifier les installations
+  run: |
+  echo "�� Version de Node.js :"
+  node -v
+  echo "�� Version de Python :"
+  python --version
