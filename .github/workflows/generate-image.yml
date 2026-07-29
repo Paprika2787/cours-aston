@@ -43,16 +43,17 @@ jobs:
           }')
 
           RESPONSE=$(curl -s -X POST "https://api.dynapictures.com/designs/c48dbce23a" \
+            -H "Authorization: Bearer ${{ secrets.DYNAPICTURES_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -H "x-api-key: ${{ secrets.DYNAPICTURES_API_KEY }}" \
             -d "$PAYLOAD")
 
           echo "Réponse API : $RESPONSE"
-          IMAGE_URL=$(echo "$RESPONSE" | jq -r '.url')
+          IMAGE_URL=$(echo "$RESPONSE" | jq -r '.imageUrl')
           echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
 
       - name: 📥 Télécharger l'image générée
         run: |
+          echo "URL récupérée : $IMAGE_URL"
           SHORT_SHA="${GITHUB_SHA:0:7}"
           curl -s "$IMAGE_URL" -o "images/${SHORT_SHA}.png"
 
