@@ -8,6 +8,10 @@ on:
       - main
   workflow_dispatch: # Permet un déclenchement manuel
 
+# 🔓 Autorise le workflow à écrire dans le dépôt (push de l'image)
+permissions:
+  contents: write
+
 # 🛠️ Définition des jobs
 jobs:
   generate-and-deploy:
@@ -23,56 +27,65 @@ jobs:
         id: commit_message
         run: |
           MESSAGE=$(git log -1 --pretty=%B)
-          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: 📁 Créer le dossier images
         run: mkdir -p images
 
       - name: 🎨 Générer l'image via l'API DynaPictures
+        id: generate_image
         env:
           DYNAPICTURES_API_KEY: ${{ secrets.DYNAPICTURES_API_KEY }}
           COMMIT_MESSAGE: ${{ steps.commit_message.outputs.message }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.dynapictures.com/templates/YOUR_TEMPLATE_ID/renders" \
+          # ✅ Utilisation de jq pour construire un JSON valide même avec guillemets dans le message
+          PAYLOAD=$(jq -n --arg text "$COMMIT_MESSAGE" '{"template": "default", "text": $text}')
+
+          RESPONSE=$(curl -s -X POST "https://api.dynapictures.com/design/generate" \
             -H "Authorization: Bearer $DYNAPICTURES_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"data\": {
-                \"text\": {
-                  \"text\": \"$COMMIT_MESSAGE\"
-                }
-              }
-            }")
+            -d "$PAYLOAD")
+
           echo "Réponse API : $RESPONSE"
-          IMAGE_URL=$(echo $RESPONSE | grep -o '"url":"[^"]*' | cut -d'"' -f4)
+
+          # ✅ Extraction de l'URL avec jq
+          IMAGE_URL=$(echo "$RESPONSE" | jq -r '.url')
           echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
 
       - name: 📥 Télécharger l'image générée
         run: |
-          TIMESTAMP=$(date +%s)
-          curl -s "$IMAGE_URL" -o "images/image-$TIMESTAMP.png"
-          echo "IMAGE_FILE=image-$TIMESTAMP.png" >> $GITHUB_ENV
+          # ✅ Nom de fichier basé sur le SHA court pour ne jamais écraser une image précédente
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          curl -s "$IMAGE_URL" -o "images/${SHORT_SHA}.png"
+          echo "IMAGE_FILE=${SHORT_SHA}.png" >> $GITHUB_ENV
 
-      - name: 🌐 Générer le fichier index.html
-        run: |
-          echo "<html><head><title>Galerie d'Images générées</title></head><body>" > images/index.html
-          echo "<h1>🎨 Images générées par les commits</h1>" >> images/index.html
-          for img in images/*.png; do
-            filename=$(basename "$img")
-            echo "<div><img src='$filename' width='300'/><p>$filename</p></div>" >> images/index.html
-          done
-          echo "</body></html>" >> images/index.html
-
-      - name: 📤 Commit et push des nouvelles images
+      - name: 📤 Commit et push de l'image
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add images/
-          git commit -m "🎨 Ajout de l'image générée pour le commit : ${{ steps.commit_message.outputs.message }}" || echo "Rien à committer"
+          git commit -m "🎨 Ajout de l'image générée pour le commit : ${GITHUB_SHA:0:7}" || echo "Rien à committer"
           git push
+
+      - name: 📁 Préparer le dossier public pour GitHub Pages
+        run: |
+          mkdir -p public/images
+          cp images/*.png public/images/
+
+      - name: 🌐 Générer le fichier index.html
+        run: |
+          echo "<html><head><title>Galerie d'Images générées</title></head><body>" > public/index.html
+          echo "<h1>🎨 Images générées par les commits</h1>" >> public/index.html
+          for img in public/images/*.png; do
+            filename=$(basename "$img")
+            echo "<div><img src='images/$filename' width='300'/><p>$filename</p></div>" >> public/index.html
+          done
+          echo "</body></html>" >> public/index.html
 
       - name: 🚀 Déployer sur GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./images
+          publish_dir: ./public
