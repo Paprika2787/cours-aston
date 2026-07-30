@@ -28,10 +28,14 @@ jobs:
             "color": "blue"
           }' > badges/badge.json
 
-      - name: Commit et push les modifications
+      - name: Commit et push des images et de l'index.html
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add badges/badge.json
-          git commit -m "Mise à jour automatique du badge" || echo "Rien à committer"
-          git push
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Ajout image + mise à jour galerie pour commit ${{ github.sha }}" || echo "Rien à committer"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin main && break
+            echo "Push échoué, nouvelle tentative..."
+            sleep 5
+          done
