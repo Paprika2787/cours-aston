@@ -1,0 +1,39 @@
+name: Commentaire Automatique sur Commit avec Image
+
+on:
+  workflow_run:
+    workflows: ["Génération d'Image via IA et Déploiement GitHub Pages"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  comment:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le SHA court du commit
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Construire l'URL de l'image
+        run: |
+          IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/images/${{ env.SHORT_SHA }}.png"
+          echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
+
+      - name: Ajouter un commentaire sur le commit
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const sha = "${{ github.event.workflow_run.head_sha }}";
+            const message = `${{ github.event.workflow_run.head_commit.message }}`;
+            const imageUrl = "${{ env.IMAGE_URL }}";
+
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: sha,
+              body: `**Image générée automatiquement**\n\n Message du commit : ${message}\n\n![Image générée](${imageUrl})`
+            });
