@@ -1,4 +1,4 @@
-#  Nom du workflow
+# 🏷️ Nom du workflow
 name: Génération d'Image via IA et Déploiement GitHub Pages
 
 on:
@@ -6,6 +6,10 @@ on:
     branches:
       - main
   workflow_dispatch:
+
+concurrency:
+  group: git-push-main
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -31,7 +35,7 @@ jobs:
       - name: Créer le dossier images
         run: mkdir -p images
 
-      - name:  Générer l'image via l'API DynaPictures
+      - name: 🎨 Générer l'image via l'API DynaPictures
         env:
           COMMIT_MESSAGE: ${{ steps.commit_message.outputs.message }}
         run: |

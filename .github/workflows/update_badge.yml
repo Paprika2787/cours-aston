@@ -11,6 +11,10 @@ on:
     - cron: "0 * * * *"      # toutes les heures (UTC)
   workflow_dispatch:         # bouton manuel, pratique pour tester
 
+concurrency:
+  group: git-push-main
+  cancel-in-progress: false
+
 # Le workflow doit ÉCRIRE dans le dépôt (commit + push)
 permissions:
   contents: write
