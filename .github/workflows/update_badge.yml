@@ -1,41 +1,60 @@
+# 🏷️ Nom du workflow
 name: Mise à jour du badge
 
+# 🎯 Déclencheurs
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths-ignore:
+      - 'badges/**'          # évite que le workflow se relance sur son propre commit
   schedule:
-    - cron: "0 * * * *"  # Met à jour chaque heure
+    - cron: "0 * * * *"      # toutes les heures (UTC)
+  workflow_dispatch:         # bouton manuel, pratique pour tester
+
+# 🔐 Le workflow doit ÉCRIRE dans le dépôt (commit + push)
+permissions:
+  contents: write
 
 jobs:
   update-badge:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout du dépôt
+      - name: 📥 Cloner le dépôt
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Compter le nombre de commits
-        id: commit_count
-        run: echo "count=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+      - name: 🔢 Compter le nombre de commits
+        id: compte
+        run: echo "total=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Mettre à jour le badge
+      - name: 🎨 Mettre à jour le fichier du badge
+        env:
+          TOTAL: ${{ steps.compte.outputs.total }}
         run: |
           mkdir -p badges
-          echo '{
-            "schemaVersion": 1,
-            "label": "Commits",
-            "message": "'${{ steps.commit_count.outputs.count }}'",
-            "color": "blue"
+          jq -n --arg total "$TOTAL" '{
+            schemaVersion: 1,
+            label: "Commits",
+            message: $total,
+            color: "blue"
           }' > badges/badge.json
+          cat badges/badge.json
 
-      - name: Commit et push des images et de l'index.html
+      - name: 💾 Committer et pousser (seulement si ça a changé)
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Ajout image + mise à jour galerie pour commit ${{ github.sha }}" || echo "Rien à committer"
-          for i in 1 2 3 4 5; do
-            git pull --rebase origin main && git push origin main && break
-            echo "Push échoué, nouvelle tentative..."
-            sleep 5
-          done
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- badges/badge.json; then
+            echo "Badge déjà à jour, rien à pousser."
+            exit 0
+          fi
+
+          git add badges/badge.json
+          git commit -m "chore: mise à jour automatique du badge [skip ci]"
+          git pull --rebase origin main
+          git push
+          echo "Badge mis à jour : $TOTAL commits"
+        env:
+          TOTAL: ${{ steps.compte.outputs.total }}
