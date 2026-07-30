@@ -1,0 +1,37 @@
+# Nom du workflow
+name: Ajouter un Commentaire Automatique sur une PR
+
+# Déclenchement automatique à chaque mise à jour d'une PR
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# Permissions nécessaires pour commenter la PR
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+# Définition des tâches (jobs)
+jobs:
+  add-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cloner le dépôt
+        uses: actions/checkout@v4
+
+      - name: Récupérer le message du dernier commit
+        id: get_commit_message
+        run: echo "MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+
+      - name: Ajouter un commentaire sur la PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "**Nouveau Commit Détecté !**\n\n**Message du Commit :**\n${{ env.MESSAGE }}\n\n_Ce message est généré automatiquement._"
+            });
