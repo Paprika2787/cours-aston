@@ -1,0 +1,37 @@
+name: Discord Notification
+
+on:
+  workflow_run:
+    workflows: ["Génération d'Image via IA et Déploiement GitHub Pages"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  notify:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le SHA court du commit
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Construire l'URL de l'image
+        run: |
+          IMAGE_URL="https://paprika2787.github.io/cours-aston/images/${{ env.SHORT_SHA }}.png"
+          echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
+
+      - name: Envoyer sur Discord
+        run: |
+          COMMIT_MSG="${{ github.event.workflow_run.head_commit.message }}"
+          PAYLOAD=$(cat << JSON
+          {
+            "content": "Nouvelle image générée !\n **Message :** $COMMIT_MSG\n📷 **Image :** ${{ env.IMAGE_URL }}"
+          }
+          JSON
+          )
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"

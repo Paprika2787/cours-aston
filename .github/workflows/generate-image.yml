@@ -1,4 +1,4 @@
-# 📋 Nom du workflow
+#  Nom du workflow
 name: Génération d'Image via IA et Déploiement GitHub Pages
 
 on:
@@ -28,10 +28,10 @@ jobs:
           echo "$MESSAGE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: 📁 Créer le dossier images
+      - name: Créer le dossier images
         run: mkdir -p images
 
-      - name: 🎨 Générer l'image via l'API DynaPictures
+      - name:  Générer l'image via l'API DynaPictures
         env:
           COMMIT_MESSAGE: ${{ steps.commit_message.outputs.message }}
         run: |
@@ -60,7 +60,7 @@ jobs:
       - name: Générer le fichier index.html
         run: |
           echo "<html><head><title>Galerie d'Images générées</title></head><body>" > index.html
-          echo "<h1>🎨 Images générées par les commits</h1>" >> index.html
+          echo "<h1>Images générées par les commits</h1>" >> index.html
           for img in images/*.png; do
             filename=$(basename "$img")
             echo "<div><img src='images/$filename' width='300'/><p>$filename</p></div>" >> index.html
@@ -72,5 +72,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add images/ index.html
-          git commit -m "🎨 Ajout image + mise à jour galerie pour commit ${GITHUB_SHA:0:7}" || echo "Rien à committer"
+          git commit -m " Ajout image + mise à jour galerie pour commit ${GITHUB_SHA:0:7}" || echo "Rien à committer"
           git push
