@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Cloner le dépôt GitHub
+      - name: Cloner le dépôt GitHub
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 📝 Récupérer le message du dernier commit
+      - name: Récupérer le message du dernier commit
         id: commit_message
         run: |
           MESSAGE=$(git log -1 --pretty=%B)
@@ -51,13 +51,13 @@ jobs:
           IMAGE_URL=$(echo "$RESPONSE" | jq -r '.imageUrl')
           echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
 
-      - name: 📥 Télécharger l'image générée
+      - name: Télécharger l'image générée
         run: |
           echo "URL récupérée : $IMAGE_URL"
           SHORT_SHA="${GITHUB_SHA:0:7}"
           curl -s "$IMAGE_URL" -o "images/${SHORT_SHA}.png"
 
-      - name: 🌐 Générer le fichier index.html
+      - name: Générer le fichier index.html
         run: |
           echo "<html><head><title>Galerie d'Images générées</title></head><body>" > index.html
           echo "<h1>🎨 Images générées par les commits</h1>" >> index.html
@@ -67,7 +67,7 @@ jobs:
           done
           echo "</body></html>" >> index.html
 
-      - name: 📤 Commit et push des images et de l'index.html
+      - name: Commit et push des images et de l'index.html
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
