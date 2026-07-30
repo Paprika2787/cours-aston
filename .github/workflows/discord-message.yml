@@ -1,0 +1,31 @@
+name: Envoyer un message sur Discord
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  send-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Cloner le dépôt GitHub
+        uses: actions/checkout@v4
+
+      - name: 📝 Récupérer le message du dernier commit
+        id: get_commit_message
+        run: echo "MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+
+      - name: 📢 Envoyer le message sur Discord
+        run: |
+          payload=$(jq -n --arg message "$MESSAGE" '{
+            username: "Github BOT de MAX",
+            avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+            embeds: [{
+              title: "Nouveau commit",
+              description: ("Le dernier commit est : " + $message),
+              color: 15258703,
+              footer: { text: "Github Action - Automatisation" }
+            }]
+          }')
+          echo "Payload JSON: $payload"
+          curl -H "Content-Type: application/json" -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" -d "$payload"
