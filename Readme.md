@@ -13,7 +13,7 @@ On retrouvera dans ce répertoire tous les exemples et exercices que j'ai effect
 
 [![Génération Image](https://github.com/Paprika2787/cours-aston/actions/workflows/generate-image.yml/badge.svg?branch=main)](https://github.com/Paprika2787/cours-aston/actions/workflows/generate-image.yml)
 [![Commentaire Commit](https://github.com/Paprika2787/cours-aston/actions/workflows/comment-on-commit.yml/badge.svg?branch=main)](https://github.com/Paprika2787/cours-aston/actions/workflows/comment-on-commit.yml)
-[![Badge Commits](https://github.com/Paprika2787/cours-aston/actions/workflows/update-badge.yml/badge.svg?branch=main)](https://github.com/Paprika2787/cours-astonactions/workflows/update-badge.yml)
+[![Badge Commits](https://github.com/Paprika2787/cours-aston/actions/workflows/update-badge.yml/badge.svg?branch=main)](https://github.com/Paprika2787/cours-aston/actions/workflows/update-badge.yml)
 
 # Badge dynamique (nombre de commits)
 
