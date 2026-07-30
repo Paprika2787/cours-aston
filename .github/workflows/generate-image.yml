@@ -71,6 +71,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add images/ index.html
-          git commit -m " Ajout image + mise à jour galerie pour commit ${GITHUB_SHA:0:7}" || echo "Rien à committer"
-          git push
+          git add .
+          git commit -m "Ajout image + mise à jour galerie pour commit ${{ github.sha }}" || echo "Rien à committer"
+
+          # Tente le push, et si ça échoue, rebase puis réessaie
+          git pull --rebase origin main
+          git push origin main || (git pull --rebase origin main && git push origin main)
