@@ -1,0 +1,95 @@
+name: Triage des issues
+
+on:
+  issues:
+    types: [opened]
+
+# Plafond de degats : tout ce qui n'est pas liste passe a "none"
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Recuperer le depot
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lister les issues ouvertes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue list --state open --limit 50 --json number,title \
+            > issues-existantes.json
+          cat issues-existantes.json
+
+      - name: Analyser l'issue avec l'IA
+        id: ia
+        env:
+          API_KEY:      ${{ secrets.API_KEY }}
+          ISSUE_TITRE:  ${{ github.event.issue.title }}
+          ISSUE_CORPS:  ${{ github.event.issue.body }}
+          ISSUE_NUMERO: ${{ github.event.issue.number }}
+        run: node scripts/triage-issue.js
+
+      - name: Poser le label
+        if: steps.ia.outputs.label != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMERO:   ${{ github.event.issue.number }}
+          LABEL:    ${{ steps.ia.outputs.label }}
+        run: gh issue edit "$NUMERO" --add-label "$LABEL"
+
+      - name: Construire le commentaire
+        env:
+          LABEL:     ${{ steps.ia.outputs.label }}
+          DOUBLON:   ${{ steps.ia.outputs.doublon }}
+          RESUME:    ${{ steps.ia.outputs.resume }}
+          INJECTION: ${{ steps.ia.outputs.injection }}
+        run: |
+          {
+            echo "Merci pour cette issue ! Un mainteneur va la relire."
+            echo ""
+            echo "En attendant, vérifiez qu'elle contient bien les étapes"
+            echo "pour reproduire le problème."
+            echo ""
+
+            if [ -n "$LABEL" ]; then
+              echo "Label proposé automatiquement : \`$LABEL\`"
+              echo ""
+            fi
+
+            if [ -n "$RESUME" ]; then
+              echo "En résumé : $RESUME"
+              echo ""
+            fi
+
+            if [ -n "$DOUBLON" ]; then
+              echo "Cette issue ressemble beaucoup à #$DOUBLON, qui est déjà ouverte."
+              echo "Jetez-y un œil ! (aucune fermeture automatique : un humain tranche)"
+              echo ""
+            fi
+
+            if [ "$INJECTION" = "true" ]; then
+              echo "Cette issue contient des instructions adressées à un automate."
+              echo "Signalée pour relecture humaine."
+              echo ""
+            fi
+
+            echo "_Triage automatique — le label et le doublon sont des suggestions._"
+          } > commentaire.md
+
+          cat commentaire.md
+
+      - name: Poster le commentaire
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMERO:   ${{ github.event.issue.number }}
+        run: gh issue comment "$NUMERO" --body-file commentaire.md
