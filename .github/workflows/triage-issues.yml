@@ -1,4 +1,4 @@
-name: Triage des issues
+name: Triage des issues (IA)
 
 on:
   issues:
@@ -12,12 +12,54 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout du dépôt
+      - name: Cloner le dépôt
         uses: actions/checkout@v4
 
-      - name: Commentaire d'accueil
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📝 Préparer les données de l'issue
+        env:
+          NUMERO: ${{ github.event.issue.number }}
+          TITRE: ${{ github.event.issue.title }}
+          CORPS: ${{ github.event.issue.body }}
+        run: |
+          jq -n --arg number "$NUMERO" --arg title "$TITRE" --arg body "$CORPS" \
+            '{number: ($number | tonumber), title: $title, body: $body}' > issue.json
+
+      - name: Demander à l'IA de trier l'issue
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+        run: node scripts/triage-issue.js issue.json triage.json
+
+      - name:  Commenter et étiqueter l'issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUMERO: ${{ github.event.issue.number }}
         run: |
-          gh issue comment "$NUMERO" --body "👋 Merci pour cette issue ! Un mainteneur va la relire. En attendant, vérifiez qu'elle contient bien les étapes pour reproduire le problème."
+          set -euo pipefail
+
+          if [ ! -f triage.json ]; then
+            echo "Fichier triage.json introuvable."
+            exit 1
+          fi
+
+          CATEGORIE=$(jq -r '.categorie' triage.json)
+          PRIORITE=$(jq -r '.priorite' triage.json)
+          RAISON=$(jq -r '.raison' triage.json)
+
+          {
+            echo "Merci pour cette issue !"
+            echo ""
+            echo "**Analyse automatique de l'IA :**"
+            echo "- Catégorie : \`${CATEGORIE}\`"
+            echo "- Priorité : \`${PRIORITE}\`"
+            echo "- Raison : ${RAISON}"
+            echo ""
+            echo "Un mainteneur va la relire prochainement."
+          } > commentaire.txt
+
+          gh issue comment "$NUMERO" --body-file commentaire.txt
+          gh issue edit "$NUMERO" --add-label "$CATEGORIE" --add-label "priorite-$PRIORITE" || true
