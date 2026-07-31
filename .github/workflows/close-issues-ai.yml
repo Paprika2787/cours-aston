@@ -1,0 +1,115 @@
+name: Fermeture automatique des issues résolues (IA)
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write        # commenter ET fermer une issue
+  contents: read       # actions/checkout
+  pull-requests: read  # gh pr diff
+
+jobs:
+  detecter-issues-resolues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cloner le dépôt
+        uses: actions/checkout@v4
+
+      - name:  Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Récupérer le diff de la Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr diff "$PR_NUMBER" > diff.txt
+          echo "Taille du diff : $(wc -c < diff.txt) octets"
+
+      - name: Lister les issues encore ouvertes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh issue list --state open --limit 50 --json number,title,body > issues.json
+          echo "Issues ouvertes : $(jq 'length' issues.json)"
+
+      - name:  Demander à l'IA quelles issues ce code résout
+        env:
+          OPENAI_API_KEY: ${{ secrets.API_KEY }}
+        run: node scripts/match-issues.js diff.txt issues.json matches.json
+
+      - name: Commenter et fermer les issues identifiées
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+
+          # 🛡️ Garde : sans matches.json, jq afficherait « Could not open file »
+          if [ ! -f matches.json ]; then
+            echo " Fichier matches.json introuvable."
+            echo "   L'étape « Demander à l'IA » n'a pas produit sa sortie."
+            echo "   → La vraie erreur est dans le log de cette étape-là, pas ici."
+            exit 1
+          fi
+
+          NB=$(jq '.matches | length' matches.json)
+
+          if [ "$NB" -eq 0 ]; then
+            echo "Aucune issue à fermer pour cette PR. Rien à faire."
+            exit 0
+          fi
+
+          echo "$NB issue(s) à traiter."
+
+          SUCCES=0
+          ECHECS=0
+
+          for i in $(seq 0 $((NB - 1))); do
+            NUMERO=$(jq -r ".matches[$i].issue" matches.json)
+            jq -r ".matches[$i].raison" matches.json > raison.txt
+
+            {
+              echo " **Cette issue semble résolue par la Pull Request #${PR_NUMBER}.**"
+              echo ""
+              echo "**Analyse de l'IA :**"
+              echo ""
+              sed 's/^/> /' raison.txt
+              echo ""
+              echo "🔗 ${PR_URL}"
+              echo ""
+              echo "---"
+              echo "_Issue fermée automatiquement par GitHub Actions. Rouvrez-la si l'analyse est fausse._"
+            } > commentaire.md
+
+            # `if ! commande` neutralise `set -e` sur CETTE commande seulement
+            if ! gh issue comment "$NUMERO" --body-file commentaire.md; then
+              echo "::warning::Issue #${NUMERO} : commentaire impossible. Elle n'a PAS été fermée."
+              ECHECS=$((ECHECS + 1))
+              continue
+            fi
+
+            if ! gh issue close "$NUMERO" --reason completed; then
+              echo "::warning::Issue #${NUMERO} : commentée mais NON fermée (verrouillée ? déjà fermée ?)."
+              ECHECS=$((ECHECS + 1))
+              continue
+            fi
+
+            SUCCES=$((SUCCES + 1))
+            echo "Issue #${NUMERO} commentée puis fermée."
+          done
+
+          echo "─────────────────────────────────────────"
+          echo " Récapitulatif : ${SUCCES} fermée(s), ${ECHECS} en échec, sur ${NB} tentative(s)."
+
+          if [ "$ECHECS" -gt 0 ]; then
+            echo "Au moins une issue n'a pas pu être traitée : le job est marqué en échec."
+            exit 1
+          fi
