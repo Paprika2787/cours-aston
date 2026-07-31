@@ -41,7 +41,7 @@ jobs:
 
       - name:  Demander à l'IA quelles issues ce code résout
         env:
-          OPENAI_API_KEY: ${{ secrets.API_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
         run: node scripts/match-issues.js diff.txt issues.json matches.json
 
       - name: Commenter et fermer les issues identifiées
